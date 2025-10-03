@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Сюрприз дня</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin:0; padding:24px; background:#fafafa; }
+    .card { max-width: 560px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px; background:#fff; box-shadow: 0 10px 30px rgba(0,0,0,0.06); }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    p { margin: 0 0 12px; line-height: 1.5; }
+    .muted { color:#6b7280; font-size: 14px; }
+    .msg { font-size: 20px; font-weight: 600; margin: 16px 0; }
+    .btn { display:inline-block; padding:10px 16px; border-radius: 10px; border:1px solid #e5e7eb; background:#fff; cursor:pointer; }
+    .btn.ok { background:#10b981; color:#fff; border:none; }
+    .row { display:flex; gap:8px; align-items:center; }
+    input { padding:8px 10px; border-radius:10px; border:1px solid #e5e7eb; width:100%; }
+    .hidden { display:none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Сюрприз дня 🎁</h1>
+    <div id="gate" class="hidden">
+      <p>Введите слово дня с экрана:</p>
+      <div class="row">
+        <input id="codeInput" placeholder="Слово дня"/>
+        <button class="btn ok" id="unlockBtn">Открыть</button>
+      </div>
+      <p id="gateHint" class="muted"></p>
+    </div>
+    <div id="content" class="hidden">
+      <div class="msg" id="message"></div>
+    </div>
+  </div>
+
+<script>
+/*
+  Настройка без программиста:
+  1) Меняйте список MESSAGES ниже под ваши пожелания/цитаты/факты.
+  2) Ссылка без кода: .../surprise_v2.html?src=lunch (или src=all)
+     Ссылка с кодом-словом: .../surprise_v2.html?src=lunch&gate=1&code=СОЛНЦЕ
+  3) Ограничение "1 сообщение в день на устройство" работает через localStorage браузера.
+     Это значит, что в другом браузере/устройстве страницу можно открыть заново.
+*/
+
+const MESSAGES = [
+  "Хорошего дня! Пусть всё получится ✨",
+  "Мини-совет по безопасности: держитесь за поручень на лестнице.",
+  "Факт о компании: мы вместе уже X лет — спасибо вам!",
+  "Идея дня: 3 глубоких вдоха перед сложной задачей.",
+  "Цитата: «Самый тёмный час — перед рассветом».",
+  "Совет по фокусу: 25 минут работы, 5 минут пауза — попробуйте сегодня.",
+  "Сегодня отличный повод улыбнуться коллеге справа 🙂",
+  "Маленькая победа — тоже победа. Заметьте её сегодня."
+];
+
+function pickRandom(arr){ return arr[Math.floor(Math.random()*arr.length)] }
+
+// Параметры из URL
+const params = new URLSearchParams(location.search);
+const gate = params.get('gate') === '1';
+const code = params.get('code') || ""; // слово дня, если включена проверка
+const src = params.get('src') || "";   // lunch / all (для аналитики через шортссылки)
+
+const gateEl = document.getElementById('gate');
+const contentEl = document.getElementById('content');
+const messageEl = document.getElementById('message');
+const gateHint = document.getElementById('gateHint');
+
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+function getStored() {
+  try { return JSON.parse(localStorage.getItem("surprise_v2") || "{}"); } catch(e){ return {}; }
+}
+function setStored(obj) {
+  localStorage.setItem("surprise_v2", JSON.stringify(obj));
+}
+
+function showMessageOncePerDay() {
+  const key = todayKey();
+  const store = getStored();
+  if (store.date === key && typeof store.msgIndex === "number") {
+    // Уже открывали сегодня — показываем то же самое
+    messageEl.textContent = MESSAGES[store.msgIndex] || MESSAGES[0];
+    contentEl.classList.remove('hidden');
+    return;
+  }
+  // Первая попытка сегодня — случайное сообщение, сохраняем
+  const idx = Math.floor(Math.random()*MESSAGES.length);
+  messageEl.textContent = MESSAGES[idx];
+  setStored({ date: key, msgIndex: idx });
+  contentEl.classList.remove('hidden');
+}
+
+function unlock() {
+  const v = document.getElementById('codeInput').value.trim();
+  if (!code) { showMessageOncePerDay(); return; }
+  if (v && v.toLowerCase() === code.toLowerCase()) {
+    showMessageOncePerDay();
+  } else {
+    gateHint.textContent = "Неверное слово. Подсказка была на экране рядом с QR.";
+  }
+}
+
+function init() {
+  if (gate) {
+    gateEl.classList.remove('hidden');
+    document.getElementById('unlockBtn').addEventListener('click', unlock);
+  } else {
+    showMessageOncePerDay();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
